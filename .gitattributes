@@ -1,3 +1,6 @@
+* text=auto
+* text eol=lf
+
 tests/			export-ignore
 travis/			export-ignore
 .github/        export-ignore

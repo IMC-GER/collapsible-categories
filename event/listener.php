@@ -49,6 +49,7 @@ class listener implements EventSubscriberInterface
 			'core.user_setup'									=> 'load_language_on_setup',
 			'core.display_forums_modify_category_template_vars'	=> 'show_collapsible_categories',
 			'core.display_forums_modify_template_vars'			=> 'show_collapsible_categories',
+			'core.search_modify_param_before'					=> 'modify_search_param',
 		);
 	}
 
@@ -86,5 +87,56 @@ class listener implements EventSubscriberInterface
 			'U_COLLAPSE_URL'	=> $this->operator->get_collapsible_link($fid),
 		));
 		$event[$row] = $event_row;
+	}
+
+	/**
+	 * Get childs from forum
+	 *
+	 * @param	int		$parent_id			foren id
+	 *
+	 * @return array	$forum_child_ids	ids form forum childs
+	 */
+	function get_forum_child_ids($parent_id)
+	{
+		global $db;
+		$forum_child_ids = [];
+
+		$sql = 'SELECT forum_id FROM ' . FORUMS_TABLE . " WHERE parent_id = $parent_id";
+		$result = $db->sql_query($sql);
+
+		while ($row = $db->sql_fetchrow($result))
+		{
+			$forum_child_ids[] = $row['forum_id'];
+		}
+
+		$db->sql_freeresult($result);
+
+		return $forum_child_ids;
+	}
+
+	/**
+	 * Modify the SQL parameters before pre-made searches
+	 *
+	 * @param			$event 		The event object
+	 * @var		array	ex_fid_ary	Array of excluded forum ids
+	 * @return	void
+	 */
+	public function modify_search_param($event)
+	{
+		$ex_fid			 = $event['ex_fid_ary'];
+		$collapsible_fid = $this->operator->get_user_categories();
+
+		foreach ($collapsible_fid as &$value)
+		{
+			$value = substr($value, (strpos($value, '_') + 1));
+		}
+
+		for ($i = 0; $i < count($collapsible_fid); $i++)
+		{
+			$collapsible_fid = array_merge($collapsible_fid, $this->get_forum_child_ids($collapsible_fid[$i]));
+		}
+
+		$ex_fid = array_merge($ex_fid, $collapsible_fid);
+		$event['ex_fid_ary'] = $ex_fid;
 	}
 }
